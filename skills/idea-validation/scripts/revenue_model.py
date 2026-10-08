@@ -4,7 +4,8 @@
 用法：python3 revenue_model.py model.json [--json]
 
 model.json 里每个参数都写成 {"low": .., "mid": .., "high": .., "source": "出处"}，
-没有出处的参数会被标为「假设」。字段见 SKILL.md 第 5 步与 model-template.json。
+没有出处的参数会被标为「假设」；接口实测得到的参数加 "measured": true。
+other_monthly_visits（社区、开源、直达等非搜索渠道的月访问）可选，不填按 0。字段见 SKILL.md「算钱」与 model-template.json。
 
 输出：
   1. 自下而上（搜索漏斗）：每月新增付费用户、稳态月收入、12 个月累计收入
@@ -19,10 +20,12 @@ import sys
 
 LEVELS = ('low', 'mid', 'high')
 RATES = {'click_share', 'visit_to_signup', 'signup_to_paid', 'visit_to_paid', 'your_share'}
+OPTIONAL_DEFAULT_ZERO = ('other_monthly_visits',)
 BOTTOM_UP = ('monthly_searches', 'click_share', 'visit_to_signup', 'signup_to_paid', 'price_per_month',
              'months_retained')
 LABELS = {
     'monthly_searches': '月搜索量（去重后合计）',
+    'other_monthly_visits': '非搜索渠道月访问（社区、开源、直达）',
     'click_share': '能拿到的点击份额',
     'visit_to_signup': '访问到注册',
     'signup_to_paid': '注册到付费',
@@ -48,6 +51,11 @@ def check(model):
     for k, p in params.items():
         if k not in LABELS:
             raise ModelError(f'未知参数 {k}')
+        if p.get('missing'):
+            # 没有可靠数据（例如中文市场没有搜索量）：按 0 计入，并在报告里标出来
+            for l in LEVELS:
+                p[l] = 0
+            p['source'] = ''
         vals = [p.get(l) for l in LEVELS]
         if any(not isinstance(v, (int, float)) for v in vals):
             raise ModelError(f'{k} 的 low/mid/high 必须都是数字')
@@ -61,7 +69,8 @@ def check(model):
 
 
 def bottom_up(v):
-    new_paid = v['monthly_searches'] * v['click_share'] * v['visit_to_signup'] * v['signup_to_paid']
+    visits = v['monthly_searches'] * v['click_share'] + v.get('other_monthly_visits', 0)
+    new_paid = visits * v['visit_to_signup'] * v['signup_to_paid']
     life = v['months_retained']
     steady = new_paid * v['price_per_month'] * life
     cumulative = sum(new_paid * v['price_per_month'] * min(t, life) for t in range(1, HORIZON + 1))
@@ -94,7 +103,7 @@ def top_down(v):
 def sensitivity(params):
     base = pick(params, 'mid')
     rows = []
-    for k in BOTTOM_UP:
+    for k in BOTTOM_UP + tuple(x for x in OPTIONAL_DEFAULT_ZERO if x in params):
         lo = bottom_up({**base, k: params[k]['low']})['revenue_12m']
         hi = bottom_up({**base, k: params[k]['high']})['revenue_12m']
         rows.append({'param': k, 'low_12m': lo, 'high_12m': hi, 'swing': hi - lo})
@@ -110,6 +119,11 @@ def run(model):
                                    'top_down': top_down(v)}
     out['sensitivity'] = sensitivity(params)
     out['assumptions'] = [k for k, p in params.items() if not str(p.get('source', '')).strip()]
+    out['missing'] = [k for k, p in params.items() if p.get('missing')]
+    measured = {k for k, p in params.items() if p.get('measured')}
+    # 实测值（如接口拉到的月搜索量）不能靠验证变大，最该先验证的是摆幅最大的非实测参数
+    candidates = [r for r in out['sensitivity'] if r['param'] not in measured]
+    out['top_to_validate'] = candidates[0]['param'] if candidates else None
     target = model.get('target_monthly_revenue')
     if target is not None:
         out['target'] = {l: out['scenarios'][l]['bottom_up']['steady_monthly_revenue'] >= target for l in LEVELS}
@@ -148,8 +162,13 @@ def render(model, out):
     print('|---|---|---|---|')
     for r in out['sensitivity']:
         print(f"| {LABELS[r['param']]} | {fmt(r['low_12m'])} | {fmt(r['high_12m'])} | {fmt(r['swing'])} |")
-    top = out['sensitivity'][0]['param']
-    print(f'\n最该先验证的假设：**{LABELS[top]}**（摆幅最大）。')
+    top = out['top_to_validate']
+    if top:
+        print(f'\n最该先验证的假设：**{LABELS[top]}**（非实测参数里摆幅最大）。')
+    if out['sensitivity'][0]['param'] != top:
+        print(f"摆幅最大的是实测参数「{LABELS[out['sensitivity'][0]['param']]}」：它决定上限，但不能靠验证改变。")
+    if out.get('missing'):
+        print('缺数据、按 0 计入的参数：' + '、'.join(LABELS[k] for k in out['missing']) + '。这一块收入被低估，结论里要写明。')
     if out['assumptions']:
         print('没有出处、只是假设的参数：' + '、'.join(LABELS[k] for k in out['assumptions']) + '。')
     acq = out['scenarios']['mid']['acquisition']
@@ -162,20 +181,42 @@ def render(model, out):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('model')
+    ap.add_argument('models', nargs='+', help='一个或多个模型文件；多个时（如中文、英文各一个）先分别输出，再给合计')
     ap.add_argument('--json', action='store_true', help='输出 JSON 而不是表格')
+    ap.add_argument('--target', type=float, help='合计的目标月收入（默认取第一个模型的 target_monthly_revenue）')
     a = ap.parse_args(argv)
-    with open(a.model, encoding='utf-8') as f:
-        model = json.load(f)
-    try:
-        out = run(model)
-    except ModelError as e:
-        print(f'模型不合格：{e}', file=sys.stderr)
-        return 1
+    results = []
+    for path in a.models:
+        with open(path, encoding='utf-8') as f:
+            model = json.load(f)
+        try:
+            out = run(model)
+        except ModelError as e:
+            print(f'{path} 模型不合格：{e}', file=sys.stderr)
+            return 1
+        results.append((path, model, out))
     if a.json:
-        print(json.dumps(out, ensure_ascii=False, indent=1))
-    else:
+        print(json.dumps({p: o for p, _, o in results}, ensure_ascii=False, indent=1))
+        return 0
+    for path, model, out in results:
+        if len(results) > 1:
+            print(f'\n# {model.get("market") or path}\n')
         render(model, out)
+    if len(results) > 1:
+        currencies = {o['currency'] for _, _, o in results}
+        if len(currencies) > 1:
+            print('\n各模型币种不同，不合计。请统一成同一币种后再合计。')
+            return 0
+        target = a.target if a.target is not None else results[0][1].get('target_monthly_revenue')
+        print('\n# 合计\n\n| 情景 | 稳态月收入 | 12 个月累计收入 |\n|---|---|---|')
+        names = {'low': '全部取低', 'mid': '全部取中', 'high': '全部取高'}
+        for l in LEVELS:
+            steady = sum(o['scenarios'][l]['bottom_up']['steady_monthly_revenue'] for _, _, o in results)
+            cum = sum(o['scenarios'][l]['bottom_up']['revenue_12m'] for _, _, o in results)
+            hit = '' if target is None else ('（达到目标）' if steady >= target else '')
+            print(f'| {names[l]} | {fmt(steady)}{hit} | {fmt(cum)} |')
+        if target is not None:
+            print(f'\n合计目标月收入 {fmt(target)}。')
     return 0
 
 

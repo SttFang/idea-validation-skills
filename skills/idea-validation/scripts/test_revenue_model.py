@@ -102,6 +102,44 @@ class Test(unittest.TestCase):
         out = m.run(tpl)  # 全零模板也能跑通，只是收入为 0
         self.assertEqual(out['scenarios']['mid']['bottom_up']['revenue_12m'], 0)
 
+
+    def test_other_channel_visits(self):
+        model = base()
+        model['params']['other_monthly_visits'] = p(0, 1000, 2000)
+        out = m.run(model)['scenarios']['mid']['bottom_up']
+        # (2000 × 0.05 + 1000) × 0.1 × 0.05 = 5.5
+        self.assertAlmostEqual(out['new_paid_per_month'], 5.5)
+
+    def test_top_to_validate_skips_measured(self):
+        model = base()
+        model['params']['monthly_searches'] = p(100, 2000, 40000)
+        model['params']['monthly_searches']['measured'] = True
+        out = m.run(model)
+        self.assertEqual(out['sensitivity'][0]['param'], 'monthly_searches')
+        self.assertNotEqual(out['top_to_validate'], 'monthly_searches')
+
+
+    def test_missing_param_counts_zero_and_flagged(self):
+        model = base()
+        model['params']['monthly_searches'] = {'missing': True}
+        out = m.run(model)
+        self.assertEqual(out['missing'], ['monthly_searches'])
+        self.assertEqual(out['scenarios']['mid']['bottom_up']['revenue_12m'], 0)
+
+    def test_combine_two_markets(self):
+        import contextlib, io, json, tempfile
+        d = tempfile.mkdtemp()
+        paths = []
+        for name in ('en', 'zh'):
+            mm = base(); mm['market'] = name; mm['target_monthly_revenue'] = 50
+            path = os.path.join(d, name + '.json'); json.dump(mm, open(path, 'w')); paths.append(path)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = m.main(paths)
+        self.assertEqual(code, 0)
+        self.assertIn('# 合计', buf.getvalue())
+        self.assertIn('| 全部取中 | 60.00（达到目标） |', buf.getvalue())
+
     def test_render_runs(self):
         model = base()
         model['params']['cpc'] = p(1, 2, 4)
