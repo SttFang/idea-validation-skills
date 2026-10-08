@@ -1,0 +1,18 @@
+{
+  "_说明": "每个参数写 low ≤ mid ≤ high 和出处 source。比例用 0–1 的小数。没有出处的参数如实留空 source，报告会把它标为假设。cpc 与竞品三项可选，不用时整项删掉。",
+  "idea": "<一句话：给谁、解决什么问题、怎么收费>",
+  "currency": "USD",
+  "target_monthly_revenue": 3000,
+  "params": {
+    "monthly_searches": {"low": 0, "mid": 0, "high": 0, "source": "2-demand.md：去重后各意图簇月量合计；low 只算核心簇，high 加上外围簇"},
+    "click_share": {"low": 0, "mid": 0, "high": 0, "source": "<自家 Search Console 同类词的点击率，或买广告时 每日预算÷单次点击价÷每日搜索量>"},
+    "visit_to_signup": {"low": 0, "mid": 0, "high": 0, "source": "<自家落地页历史数据；没有就留空，作为假设>"},
+    "signup_to_paid": {"low": 0, "mid": 0, "high": 0, "source": "<自家数据，或 3-pains.md 里付费意愿证据的强弱；没有就留空>"},
+    "price_per_month": {"low": 0, "mid": 0, "high": 0, "source": "0-idea.md 用户给的定价；对照 4-competitors.md 竞品价格"},
+    "months_retained": {"low": 1, "mid": 1, "high": 1, "source": "<一次性收费填 1；订阅填平均付费月数和出处>"},
+    "cpc": {"low": 0, "mid": 0, "high": 0, "source": "2-demand.md：low 用 low_top_of_page_bid，high 用 high_top_of_page_bid"},
+    "competitor_monthly_visits": {"low": 0, "mid": 0, "high": 0, "source": "4-competitors.md：Similarweb 月访问（建模估计）"},
+    "visit_to_paid": {"low": 0, "mid": 0, "high": 0, "source": "<没有公开来源时留空，作为假设>"},
+    "your_share": {"low": 0, "mid": 0, "high": 0, "source": "<你认为一年内能拿到的竞品流量份额，作为假设>"}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "experiment_id": "<与登记一致>",
+  "prereg_hash": "<锁定文件里的 prereg_hash>",
+  "git_commit": "<开投前提交锁定文件的 git 提交号>",
+  "launch_at": "<开投时间，ISO 格式，如 2026-10-06T09:00:00+08:00>",
+  "retrieved_at": "<取数时间，ISO 格式；结束后至少等 3 天>",
+  "look": "final",
+  "days_run": 0,
+  "unregistered_views": 0,
+  "stopped_early": false,
+  "budget_exhausted": false,
+  "results": [
+    {
+      "id": "H1",
+      "test_n": 0,
+      "test_x": 0,
+      "control_n": 0,
+      "control_x": 0,
+      "quality_flags": [],
+      "test_histogram": {
+        "1": 0
+      },
+      "control_histogram": {
+        "1": 0
+      },
+      "gclid_match_rate": {
+        "test": 0.0,
+        "control": 0.0
+      },
+      "visitors_in_both_arms": 0,
+      "daily": [
+        {
+          "date": "<YYYY-MM-DD>",
+          "test_n": 0,
+          "test_x": 0,
+          "control_n": 0,
+          "control_x": 0
+        }
+      ]
+    }
+  ],
+  "_说明": "n 为分母（点击率填展示数，转化填落地访客数），x 为分子（点击数或转化数）。quality_flags 只能填：arm_disapproved、arm_limited、budget_limited_one_arm、search_terms_mismatch、invalid_click_anomaly、tracking_broken、ai_max_detected、settings_changed，填别的会被拒绝。daily 为每天每组的计数，来自 experiment 资源按 segments.date 分天；行数必须等于 days_run，按天合计必须等于总数。days_run 为实际投放的完整天数。unregistered_views 为未登记的中途查看效果数据次数（每人每次都算）；预算先于结束日期花完时 budget_exhausted 填 true。 中期检查时 look 填 interim，days_run 必须等于登记的 interim_after_days。 test_histogram / control_histogram 为每组「点击了 k 次的访客数」（落地页 gclid 关联第一方访客编号，再对 click_view），gclid_match_rate 为每组关联率，visitors_in_both_arms 为两组都出现过的访客数；转化假设可不填。 没有直方图但填了 visitors_in_both_arms 时，要填 visitors_total（两组去重访客总数）。"
+}

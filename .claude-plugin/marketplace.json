@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "idea-validation-skills",
+  "description": "验证你的想法能赚多少钱：调研算钱、投放搭建、假设检验。",
+  "owner": {
+    "name": "SttFang",
+    "url": "https://github.com/SttFang"
+  },
+  "plugins": [
+    {
+      "name": "idea-validation-skills",
+      "description": "想法验证、投放及素材搭建、假设验证三个技能。",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

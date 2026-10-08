@@ -1,0 +1,21 @@
+{
+  "name": "idea-validation-skills",
+  "interface": {
+    "displayName": "想法验证"
+  },
+  "plugins": [
+    {
+      "name": "idea-validation-skills",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/SttFang/idea-validation-skills.git",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

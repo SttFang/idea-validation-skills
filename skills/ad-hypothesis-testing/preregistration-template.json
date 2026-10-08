@@ -1,0 +1,102 @@
+{
+  "experiment_id": "kw-msg-YYYY-MM-<名称>",
+  "question": "用户搜某类痛点关键词时，针对这个痛点写的产品诉求，是否比通用工具话术更能打动他们",
+  "control_description": "<通用工具话术广告的标题与描述>",
+  "alpha": 0.05,
+  "power": 0.8,
+  "sides": "two",
+  "multiple_comparison": "holm",
+  "srm_alert_p": 0.01,
+  "split_method": "google_ads_experiment_cookie",
+  "interim_looks": 0,
+  "interim_after_days": "<仅 interim_looks 为 1 时填：第几个完整日结束后检查，须小于 window_days；否则删除此行>",
+  "budget": 50,
+  "cpc": 1.0,
+  "window_days": 3,
+  "design_effect": {
+    "source": "first_party_click_histogram",
+    "floor": 1.25,
+    "band": [
+      1.0,
+      1.5,
+      2.0
+    ],
+    "min_match_rate": "<用户确认的 gclid 关联率门槛，0–1 数值，参考 0.7>"
+  },
+  "audience": {
+    "devices": [
+      "<desktop / mobile / tablet>"
+    ],
+    "locations": [
+      "<国家代码>"
+    ],
+    "location_mode": "presence",
+    "schedule": "<全天或具体时段>",
+    "exclusions": [
+      "<已注册用户、团队 IP 等>"
+    ],
+    "evidence": "<投放及素材搭建第 2 步的自家数据摘要，含样本量>",
+    "confirmed_by": "<确认人>",
+    "confirmed_at": "<YYYY-MM-DD>"
+  },
+  "guardrails": {
+    "search_terms_overlap_min": "<用户确认的 0–1 数值>",
+    "invalid_click_rate_max": "<用户确认的 0–1 数值>",
+    "both_arms_visitor_share_max": "<用户确认的 0–1 数值：两组都出现过的访客占比上限>",
+    "consent_rate_diff_max": "<投欧洲经济区、英国、瑞士时必填 0–1 数值；否则删除此行>"
+  },
+  "decisions": {
+    "TEST_BETTER": {
+      "action": "<结论为 TEST_BETTER 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "CONTROL_BETTER": {
+      "action": "<结论为 CONTROL_BETTER 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "FRAGILE": {
+      "action": "<结论为 FRAGILE 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "NEUTRAL": {
+      "action": "<结论为 NEUTRAL 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "INCONCLUSIVE": {
+      "action": "<结论为 INCONCLUSIVE 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "INVALID": {
+      "action": "<结论为 INVALID 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "SCREEN_PASS": {
+      "action": "<结论为 SCREEN_PASS 时做什么>",
+      "step": "<act / confirm / redo>"
+    },
+    "SCREEN_CONTROL_BETTER": {
+      "action": "<结论为 SCREEN_CONTROL_BETTER 时做什么>",
+      "step": "<act / confirm / redo>"
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "group": "<痛点关键词组名称>",
+      "role": "confirmatory",
+      "keywords": [
+        "<词组匹配片段>"
+      ],
+      "test_message": "<该痛点的测试诉求广告标题与描述>",
+      "evidence": "<支撑这个假设的调研证据，如 Reddit 痛点频次>",
+      "metric": "ctr",
+      "unit": "impression",
+      "baseline_rate": 0.069,
+      "baseline_source": "<基线出处：同一关键词组或对照组的历史数据>",
+      "mde_lift_ratio": 2.0,
+      "planned_n_per_arm": 382,
+      "daily_units": 300
+    }
+  ],
+  "_说明": "planned_n_per_arm 填 plan 的 n_per_arm（plan 要带 --confirmatory-count 本实验确认性假设条数和 --design-effect 登记的 floor）；daily_units 是按登记人群过滤后、按每日预算实际能买到的每天两组合计量；单条假设可单独写 budget，不写就平分实验总预算。 budget 填实际设置的累计花费上限（终点判断用）；量被关键词上限卡住时填 plan 的 required_budget 即可。decisions 来自投放设计第 8 步的决策映射，八种结论都要写。"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "idea-validation-skills",
+  "version": "0.1.0",
+  "description": "验证你的想法能赚多少钱：多轮需求调研与收入估算、搜索广告对照实验搭建、统计假设检验三个技能。",
+  "author": {
+    "name": "SttFang",
+    "url": "https://github.com/SttFang"
+  },
+  "homepage": "https://github.com/SttFang/idea-validation-skills",
+  "repository": "https://github.com/SttFang/idea-validation-skills",
+  "license": "MIT",
+  "keywords": ["idea-validation", "market-research", "google-ads", "ab-testing", "hypothesis-testing"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "想法验证",
+    "shortDescription": "验证你的想法能赚多少钱",
+    "longDescription": "多轮调研搜索需求、社区原话和竞品流量，按区间估算收入与获客成本；需要时用搜索广告对照实验和事先登记的统计检验来验证诉求。",
+    "developerName": "SttFang",
+    "category": "Productivity",
+    "capabilities": ["Instructions"],
+    "websiteURL": "https://github.com/SttFang/idea-validation-skills",
+    "defaultPrompt": [
+      "帮我验证这个想法能赚多少钱：",
+      "给这个产品诉求设计一轮搜索广告对照实验",
+      "用登记好的方法检验这次投放结果"
+    ]
+  }
+}
