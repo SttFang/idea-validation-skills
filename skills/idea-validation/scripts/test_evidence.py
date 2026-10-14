@@ -65,6 +65,25 @@ class Test(unittest.TestCase):
         self.assertIn('| sync | 5 | 2 | 1 | 100% | L4 | 是 |', out)
         self.assertIn('每人一票', out)
 
+    def test_chain_counts_tools_and_misfit(self):
+        rows = [row(i, f'u{i}', ['captions'], src=self.src, job='get captions right', search_phrase='auto captions not working',
+                    tools_used=['CapCut'], solved='no', why_not='timing drifts') for i in range(3)]
+        rows += [row(10, 'u10', ['captions'], src=self.src, tools_used=['CapCut', 'Descript'], solved='yes'),
+                 row(11, 'u11', ['captions'], src=self.src, search_phrase='auto captions not working')]
+        code, out = self.run_cmd('chain', self.write(rows))
+        self.assertEqual(code, 0)
+        self.assertIn('auto captions not working（4 人）', out)
+        self.assertIn('| CapCut | 4 | 1 | 0 | 3 | 是 |', out)
+        self.assertIn('timing drifts', out)
+        self.assertIn('没写 tools_used 的作者 1 人', out)
+
+    def test_verify_rejects_bad_solved(self):
+        p = self.write([row(1, 'a', ['x'], src=self.src, solved='maybe', tools_used='CapCut')])
+        code, out = self.run_cmd('verify', p)
+        self.assertEqual(code, 1)
+        self.assertIn('solved 只能是', out)
+        self.assertIn('tools_used 必须是列表', out)
+
     def test_saturation(self):
         rows, n = [], 0
         for i in range(60):

@@ -91,10 +91,11 @@ def call(method, path, body=None, auth=True, retries=3, return_error=False):
                 sys.exit(f'{method} {path} 网络失败（已重试 {retries} 次）：{e}。'
                          '如果是下单这一步，重跑同一命令即可接上已有请求，不要换输入重买。')
             time.sleep(2 * attempt)
+    # 已受理、仍在执行的下单返回 code=ok 而 status 不是 success，也算成功
+    ok = doc.get('status') == 'success' or doc.get('code') == 'ok'
     if return_error:
-        ok = doc.get('status') == 'success'
         return ok, (doc.get('data') if ok else doc)
-    if doc.get('status') != 'success':
+    if not ok:
         detail = json.dumps({k: doc.get(k) for k in ('code', 'summary', 'next_actions')}, ensure_ascii=False)
         sys.exit(f'{method} {path} 失败：{detail}。字段写错时先运行 python3 ar.py describe <接口> 对照必填项和示例输入。')
     return doc.get('data')

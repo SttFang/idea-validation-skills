@@ -3,12 +3,14 @@
 
 证据库是 evidence.jsonl，每行一条编码后的原话片段，字段见 references/coding.md：
   id, market, platform, community, url, author, date, engagement, quote, source_file,
-  codes（编码本里的代码列表）, force, stage, severity, wtp_level, segment, round
+  codes（编码本里的代码列表）, force, stage, severity, wtp_level, segment, round,
+  job, search_phrase, tools_used（列表）, solved, why_not（三层链：讨论什么→搜索什么→用了什么）
 
 用法：
   python3 evidence.py verify evidence.jsonl            # 每条原话必须在 source_file 原文里逐字出现
   python3 evidence.py stats evidence.jsonl [--market 中文]             # 每个代码的独立作者数、社区数、平台数，高产作者占比
   python3 evidence.py saturation evidence.jsonl [--market 英文] [--batch 10] [--threshold 0.05]
+  python3 evidence.py chain evidence.jsonl [--market 中文]             # 每个代码的三层链：讨论→搜索→使用→是否解决
 
 退出码：verify 有不通过的行时为 1；saturation 未饱和时为 1。
 """
@@ -22,6 +24,7 @@ import sys
 WTP_LEVELS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6']
 STAGES = ['初念', '被动寻找', '主动寻找', '决定', '使用']
 FORCES = ['推力', '拉力', '焦虑', '惯性']
+SOLVED = ['yes', 'partial', 'no', 'unknown']
 REQUIRED = ['id', 'platform', 'community', 'url', 'author', 'quote', 'source_file', 'codes']
 
 
@@ -87,6 +90,10 @@ def cmd_verify(a):
             problems.append(f"stage 只能是 {'/'.join(STAGES)}")
         if r.get('force') and r['force'] not in FORCES:
             problems.append(f"force 只能是 {'/'.join(FORCES)}")
+        if r.get('solved') and r['solved'] not in SOLVED:
+            problems.append(f"solved 只能是 {'/'.join(SOLVED)}")
+        if r.get('tools_used') is not None and not isinstance(r['tools_used'], list):
+            problems.append('tools_used 必须是列表')
         if r.get('severity') is not None and r['severity'] not in range(0, 6):
             problems.append('severity 只能是 0–5')
         if r.get('quote') and r.get('source_file'):
@@ -179,6 +186,49 @@ def cmd_saturation(a):
     return 0 if saturated else 1
 
 
+def cmd_chain(a):
+    """每个代码一条链：讨论什么（job）→ 搜索什么（search_phrase）→ 用了什么（tools_used）→ 是否解决（solved）。
+    全部按独立作者计数。一个工具「没解决 + 部分解决」的作者多于「解决了」的，标为错位：工具卖的和人要的对不上。"""
+    rows = select(load(a.file), a)
+    by_code = collections.defaultdict(list)
+    for r in rows:
+        for c in r['codes']:
+            by_code[c].append(r)
+    for c, rs in sorted(by_code.items(), key=lambda kv: -len({r['author'] for r in kv[1]})):
+        authors = {r['author'] for r in rs}
+        print(f'\n## {c}（{len(authors)} 名独立作者）')
+        jobs = collections.defaultdict(set)
+        phrases = collections.defaultdict(set)
+        tools = collections.defaultdict(lambda: {s: set() for s in SOLVED})
+        why = collections.defaultdict(list)
+        with_tools = set()
+        for r in rs:
+            if r.get('job'):
+                jobs[r['job']].add(r['author'])
+            if r.get('search_phrase'):
+                phrases[r['search_phrase']].add(r['author'])
+            for t in r.get('tools_used') or []:
+                with_tools.add(r['author'])
+                tools[t][r.get('solved') or 'unknown'].add(r['author'])
+                if r.get('why_not') and r.get('solved') in ('partial', 'no'):
+                    why[t].append(f"{r['why_not']}（{r['id']}）")
+        top = lambda d: '；'.join(f'{k}（{len(v)} 人）' for k, v in sorted(d.items(), key=lambda kv: -len(kv[1]))[:a.top]) or '—'  # noqa: E731
+        print(f'- 讨论什么：{top(jobs)}')
+        print(f'- 搜索什么：{top(phrases)}')
+        print(f'- 用了什么：没写 tools_used 的作者 {len(authors - with_tools)} 人')
+        if tools:
+            print('\n| 工具 | 用过的作者 | 解决 | 部分 | 没解决 | 错位 |')
+            print('|---|---|---|---|---|---|')
+            for t, d in sorted(tools.items(), key=lambda kv: -len(set().union(*kv[1].values())))[:a.top]:
+                users = set().union(*d.values())
+                miss = len(d['partial'] | d['no']) > len(d['yes'])
+                print(f"| {t} | {len(users)} | {len(d['yes'])} | {len(d['partial'])} | {len(d['no'])} | {'是' if miss else '否'} |")
+            for t, ws in why.items():
+                print(f'- {t} 没解决的原因：' + '；'.join(ws[:a.top]))
+    print('\n「错位」只说明在这些作者里工具没命中问题；样本小于 5 人时只当线索。反身检查写进第 8 步。')
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -186,7 +236,9 @@ def main(argv=None):
     s = sub.add_parser('stats'); s.add_argument('file'); s.add_argument('--min-authors', type=int, default=5)
     t = sub.add_parser('saturation'); t.add_argument('file'); t.add_argument('--batch', type=int, default=10)
     t.add_argument('--threshold', type=float, default=0.05)
-    for x in (s, t):
+    c = sub.add_parser('chain'); c.add_argument('file'); c.add_argument('--top', type=int, default=8)
+    c.set_defaults(fn=cmd_chain)
+    for x in (s, t, c):
         x.add_argument('--market', help='只统计某个市场，例如 中文 / 英文（对应 market 字段）')
         x.add_argument('--platform', help='只统计某个平台')
     s.set_defaults(fn=cmd_stats); t.set_defaults(fn=cmd_saturation)
