@@ -235,6 +235,8 @@ def cmd_buy(a):
     if req['status'] == 'awaiting_payment':
         sys.exit(f'余额不足，请到 https://apisrouter.com/console/recharge 充值后运行：'
                  f'python3 ar.py resume {ref}（请求保留 24 小时）。')
+    if req['status'] == 'failed' and req.get('diagnostic_code'):
+        sys.exit(f"请求 {ref} 失败（{req['diagnostic_code']}）：{req.get('diagnostic_message', '')}")
     if req['status'] != 'completed':
         sys.exit(f"请求 {ref} 状态 {req['status']}，不要换新请求重买；稍后用 python3 ar.py status {ref} 查看。")
     append_ledger(a.ledger, {'at': now, 'operation_ref': a.ref, 'input_hash': h, 'request_ref': ref,
